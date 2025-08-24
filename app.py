@@ -1,12 +1,12 @@
 from flask import Flask, jsonify, abort
 
 app = Flask(__name__)
-#app.config['JSON_AS_ASCII'] = False
+# app.config['JSON_AS_ASCII'] = False
 app.json.ensure_ascii = False
 todos = [
-    {"id": 1, "gorev": "Python REST API Projesini Başlatt", "yapildi": True},
-    {"id": 2, "gorev": "Tüm yapılacakları listele (GET)", "yapildi": False},
-    {"id": 3, "gorev": "Tek bir yapılacak işi göster (GET)", "yapildi": False},
+    {"id": 1, "task": "Start Python REST API Project", "done": True},
+    {"id": 2, "task": "List all todos (GET)", "done": False},
+    {"id": 3, "task": "Show a single todo (GET)", "done": False},
 ]
 
 
@@ -14,12 +14,20 @@ todos = [
 def tum_todolari_getir():
     return jsonify(todos)
 
+
+@app.after_request
+def set_charset(response):
+    response.headers["Content-Type"] = "application/json; charset=utf-8"
+    return response
+
+
 @app.route('/debug/config')
 def debug_config():
     # Flask'ın o anki aktif konfigürasyonunu bir sözlük olarak alalım
     config_dict = dict(app.config)
     # Bu sözlüğü JSON olarak döndürelim ki tarayıcıda görebilelim
     return jsonify(config_dict)
+
 
 @app.route('/api/todos/<int:todo_id>', methods=['GET'])
 def tek_todoyu_getir(todo_id):
