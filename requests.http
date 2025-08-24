@@ -1,0 +1,13 @@
+### Tüm yapılacakları listele (GET)
+GET http://127.0.0.1:5000/api/todos
+
+### Ayraç
+###
+
+### Yeni bir yapılacak iş oluştur (POST)
+POST http://127.0.0.1:5000/api/todos
+Content-Type: application/json
+
+{
+  "task": "Learn how to use POST requests"
+}

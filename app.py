@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, abort
+from flask import Flask, jsonify, abort, request
 
 # --- Uygulama Kurulumu ve Konfigürasyon ---
 
@@ -47,6 +47,33 @@ def get_single_todo(todo_id):  # Fonksiyon adı İngilizce'ye çevrildi
     # List comprehension bir liste döndürdüğü için, ilk elemanını alıyoruz.
     return jsonify(found_todo[0])
 
+
+# Rota: Yeni bir yapılacak iş oluştur
+@app.route('/api/todos', methods=['POST'])
+def create_todo():
+    # 1. Gelen isteğin JSON formatında olup olmadığını kontrol et.
+    #    Eğer değilse veya veri yoksa, 400 Bad Request (Kötü İstek) hatası ver.
+    if not request.json or not 'task' in request.json:
+        abort(400)
+
+    # 2. Yeni todo için ID belirle. Listenin son elemanının ID'sini alıp 1 artır.
+    #    Eğer liste boşsa, ID'yi 1 olarak başlat.
+    new_id = todos[-1]['id'] + 1 if todos else 1
+
+    # 3. Gelen JSON verisinden yeni bir todo sözlüğü oluştur.
+    #    'done' durumu varsayılan olarak False olsun.
+    new_todo = {
+        'id': new_id,
+        'task': request.json['task'],
+        'done': False
+    }
+
+    # 4. Yeni oluşturulan todo'yu "veritabanımıza" (listemize) ekle.
+    todos.append(new_todo)
+
+    # 5. Başarılı bir oluşturma işleminin ardından, REST standardı gereği
+    #    oluşturulan yeni nesneyi ve 201 Created (Oluşturuldu) durum kodunu döndür.
+    return jsonify(new_todo), 201
 
 # --- Ana Çalıştırma Bloğu ---
 
