@@ -1,5 +1,5 @@
 ### Tüm yapılacakları listele (GET)
-GET http://127.0.0.1:5000/api/todos
+GET http://127.0.0.1:5000/api/todos/2
 
 ### Ayraç
 ###
@@ -10,4 +10,27 @@ Content-Type: application/json
 
 {
   "task": "Learn how to use POST requests"
+}
+
+
+
+### ID'si 2 olan yapılacak işi güncelle (PUT)
+PUT http://127.0.0.1:5000/api/todos/2
+Content-Type: application/json
+
+{
+  "task": "Master PUT requests and update data",
+  "done": true
+}
+
+### Ayraç
+###
+
+### Var olmayan bir yapılacak işi güncellemeye çalış (PUT) - 404 Hata Vermeli
+PUT http://127.0.0.1:5000/api/todos/99
+Content-Type: application/json
+
+{
+  "task": "This will fail",
+  "done": false
 }

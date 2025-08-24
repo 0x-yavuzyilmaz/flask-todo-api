@@ -75,6 +75,32 @@ def create_todo():
     #    oluşturulan yeni nesneyi ve 201 Created (Oluşturuldu) durum kodunu döndür.
     return jsonify(new_todo), 201
 
+
+
+@app.route('/api/todos/<int:todo_id>', methods=['PUT'])
+def update_todo(todo_id):
+    # 1. Güncellenecek 'todo'yu ID'sine göre bul. (GET'ten tanıdık)
+    found_todo = [todo for todo in todos if todo['id'] == todo_id]
+    if len(found_todo) == 0:
+        abort(404)  # Bulamazsak 404 hatası ver.
+
+    # 2. Gelen isteğin JSON olup olmadığını ve gerekli alanları içerip içermediğini kontrol et. (POST'tan tanıdık)
+    if not request.json:
+        abort(400, description="Request must be JSON")
+    if 'task' not in request.json or 'done' not in request.json:
+        abort(400, description="Missing 'task' or 'done' in request body")
+    if not isinstance(request.json['done'], bool):
+        abort(400, description="'done' must be a boolean (true/false)")
+
+    # 3. Bulduğumuz 'todo'nun verilerini güncelle.
+    #    found_todo bir liste olduğu için ilk elemanını ([0]) alıyoruz.
+    todo_to_update = found_todo[0]
+    todo_to_update['task'] = request.json['task']
+    todo_to_update['done'] = request.json['done']
+
+    # 4. Güncellenmiş nesneyi ve 200 OK durum kodunu döndür.
+    return jsonify(todo_to_update)
+
 # --- Ana Çalıştırma Bloğu ---
 
 if __name__ == '__main__':
