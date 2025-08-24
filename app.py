@@ -1,16 +1,10 @@
 from flask import Flask, jsonify, abort, request
 
-# --- Uygulama Kurulumu ve Konfigürasyon ---
-
+# --- Uygulama Kurulumu ---
 app = Flask(__name__)
-
-# JSON çıktılarında Türkçe gibi Unicode karakterlerin doğru görüntülenmesini sağla.
-# Bu, senin bulduğun daha modern ve doğrudan bir yoldur.
 app.json.ensure_ascii = False
 
-# --- "Veritabanı" ve Yardımcı Fonksiyonlar ---
-
-# Başlangıç için sahte veritabanımız (İngilizce anahtarlar ve verilerle)
+# --- "Veritabanı" ---
 todos = [
     {"id": 1, "task": "Start Python REST API Project", "done": True},
     {"id": 2, "task": "List all todos (GET)", "done": False},
@@ -18,8 +12,7 @@ todos = [
 ]
 
 
-# Bu decorator, her cevaba UTF-8 karakter setini ekleyerek
-# istemcilerin (tarayıcıların) cevabı doğru okumasını garanti eder.
+# --- Karakter Seti Yardımcısı ---
 @app.after_request
 def set_charset(response):
     response.headers["Content-Type"] = "application/json; charset=utf-8"
@@ -28,102 +21,60 @@ def set_charset(response):
 
 # --- API Rotaları (Endpoints) ---
 
-# Rota: Tüm yapılacakları listele
-@app.route('/api/todos', methods=['GET'])
-def get_all_todos():  # Fonksiyon adı İngilizce'ye çevrildi
-    return jsonify(todos)
+# /api/todos adresine gelen GET ve POST isteklerini yönetir
+@app.route('/api/todos', methods=['GET', 'POST'])
+def handle_todos():
+    if request.method == 'GET':
+        # Tüm yapılacakları listele
+        return jsonify(todos)
+
+    if request.method == 'POST':
+        # Yeni bir yapılacak iş oluştur
+        if not request.json or 'task' not in request.json:
+            abort(400, description="Request must be JSON and contain a 'task' field.")
+
+        new_id = todos[-1]['id'] + 1 if todos else 1
+        new_todo = {
+            'id': new_id,
+            'task': request.json['task'],
+            'done': False
+        }
+        todos.append(new_todo)
+        return jsonify(new_todo), 201
 
 
-# Rota: Sadece ID'si belirtilen tek bir yapılacak işi getir
-@app.route('/api/todos/<int:todo_id>', methods=['GET'])
-def get_single_todo(todo_id):  # Fonksiyon adı İngilizce'ye çevrildi
-    # List comprehension ile aradığımız ID'ye sahip todo'yu bulalım
-    found_todo = [todo for todo in todos if todo['id'] == todo_id]  # Değişken adı İngilizce'ye çevrildi
-
-    # Eğer o ID'ye sahip bir todo bulunamazsa, 404 hatası döndür
-    if len(found_todo) == 0:
+# /api/todos/<id> adresine gelen GET, PUT, DELETE isteklerini yönetir
+@app.route('/api/todos/<int:todo_id>', methods=['GET', 'PUT', 'DELETE'])
+def handle_single_todo(todo_id):
+    # Önce, istenen 'todo'yu bulalım. Bu, tüm metotlar için ortak.
+    found_todo_list = [todo for todo in todos if todo['id'] == todo_id]
+    if not found_todo_list:
         abort(404)
 
-    # List comprehension bir liste döndürdüğü için, ilk elemanını alıyoruz.
-    return jsonify(found_todo[0])
+    todo = found_todo_list[0]
 
+    if request.method == 'GET':
+        return jsonify(todo)
 
-# Rota: Yeni bir yapılacak iş oluştur
-@app.route('/api/todos', methods=['POST'])
-def create_todo():
-    # 1. Gelen isteğin JSON formatında olup olmadığını kontrol et.
-    #    Eğer değilse veya veri yoksa, 400 Bad Request (Kötü İstek) hatası ver.
-    if not request.json or not 'task' in request.json:
-        abort(400)
+    if request.method == 'PUT':
+        # Gelen veriyi kontrol et
+        if not request.json:
+            abort(400, description="Request must be JSON.")
+        if 'task' not in request.json or 'done' not in request.json:
+            abort(400, description="Missing 'task' or 'done' fields.")
+        if not isinstance(request.json.get('done'), bool):
+            abort(400, description="'done' field must be a boolean.")
 
-    # 2. Yeni todo için ID belirle. Listenin son elemanının ID'sini alıp 1 artır.
-    #    Eğer liste boşsa, ID'yi 1 olarak başlat.
-    new_id = todos[-1]['id'] + 1 if todos else 1
+        # Veriyi güncelle
+        todo['task'] = request.json.get('task', todo['task'])  # .get() daha güvenli
+        todo['done'] = request.json.get('done', todo['done'])
+        return jsonify(todo)
 
-    # 3. Gelen JSON verisinden yeni bir todo sözlüğü oluştur.
-    #    'done' durumu varsayılan olarak False olsun.
-    new_todo = {
-        'id': new_id,
-        'task': request.json['task'],
-        'done': False
-    }
+    if request.method == 'DELETE':
+        todos.remove(todo)
+        return jsonify({'result': True, 'message': f'Todo with ID {todo_id} has been deleted.'})
 
-    # 4. Yeni oluşturulan todo'yu "veritabanımıza" (listemize) ekle.
-    todos.append(new_todo)
-
-    # 5. Başarılı bir oluşturma işleminin ardından, REST standardı gereği
-    #    oluşturulan yeni nesneyi ve 201 Created (Oluşturuldu) durum kodunu döndür.
-    return jsonify(new_todo), 201
-
-
-
-@app.route('/api/todos/<int:todo_id>', methods=['PUT'])
-def update_todo(todo_id):
-    # 1. Güncellenecek 'todo'yu ID'sine göre bul. (GET'ten tanıdık)
-    found_todo = [todo for todo in todos if todo['id'] == todo_id]
-    if len(found_todo) == 0:
-        abort(404)  # Bulamazsak 404 hatası ver.
-
-    # 2. Gelen isteğin JSON olup olmadığını ve gerekli alanları içerip içermediğini kontrol et. (POST'tan tanıdık)
-    if not request.json:
-        abort(400, description="Request must be JSON")
-    if 'task' not in request.json or 'done' not in request.json:
-        abort(400, description="Missing 'task' or 'done' in request body")
-    if not isinstance(request.json['done'], bool):
-        abort(400, description="'done' must be a boolean (true/false)")
-
-    # 3. Bulduğumuz 'todo'nun verilerini güncelle.
-    #    found_todo bir liste olduğu için ilk elemanını ([0]) alıyoruz.
-    todo_to_update = found_todo[0]
-    todo_to_update['task'] = request.json['task']
-    todo_to_update['done'] = request.json['done']
-
-    # 4. Güncellenmiş nesneyi ve 200 OK durum kodunu döndür.
-    return jsonify(todo_to_update)
 
 # --- Ana Çalıştırma Bloğu ---
-
 if __name__ == '__main__':
     app.run(debug=True)
-
-""" 
-#eski çalışmalar
-@app.route('/')
-def merhaba_dunya():
-    return "Merhaba, Web Dünyası!"
-
-
-@app.route('/hakkimda')
-def hakkimda_sayfasi():
-    return "Ben bir yazilim mimarıyım!"
-
-
-@app.route('/api/kisiler')
-def kisileri_getir():
-    rehber = [
-        {'isim': 'Walter White', 'telefon': '555-1234'},
-        {'isim': 'Jesse Pinkman', 'telefon': '555-5678'},
-    ]
-    return jsonify(rehber)
-
-"""

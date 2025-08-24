@@ -1,5 +1,5 @@
 ### Tüm yapılacakları listele (GET)
-GET http://127.0.0.1:5000/api/todos/2
+GET http://127.0.0.1:5000/api/todos/3
 
 ### Ayraç
 ###
@@ -34,3 +34,10 @@ Content-Type: application/json
   "task": "This will fail",
   "done": false
 }
+
+# ... (önceki GET, POST, PUT istekleri) ...
+
+
+
+### ID'si 3 olan yapılacak işi sil (DELETE)
+DELETE http://127.0.0.1:5000/api/todos/3
